@@ -1,0 +1,13 @@
+PKG_CXXFLAGS = -fopenmp -msse2
+PKG_LIBS = $(shell $(R_HOME)/bin/Rscript -e "Rcpp:::LdFlags()") -fopenmp -msse2
+
+
+GLMOBJECTS=\
+./GLM/dgemm.o \
+./GLM/strassen.o
+
+RCPPGLM = RcppGLM.o
+
+RCPP_EXPORT = RcppExports.o
+
+OBJECTS = $(GLMOBJECTS) $(RCPPGLM) $(RCPP_EXPORT)

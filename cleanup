@@ -1,0 +1,4 @@
+cd src
+rm *o
+cd glm
+rm *o

@@ -1,0 +1,19 @@
+Package: RcppGLM
+Type: Package
+Title: Parallel Generalization Linear Mode
+Version: 0.1
+Date: 2015-05-03
+Author: Eric Xin Zhou
+Maintainer: Eric Xin Zhou <xxz220@miami.edu>
+Description: RcppGLM is a parallelism framework for linear model
+License: GPL (>= 2)
+Depends: R (>= 3.0.0),
+         ggplot2,
+         gridExtra,
+         reshape
+LazyData: TRUE
+Imports:
+    methods,
+    Rcpp (>= 0.11.5)
+LinkingTo:
+    Rcpp

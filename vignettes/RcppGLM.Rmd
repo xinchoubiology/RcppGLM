@@ -1,0 +1,124 @@
+---
+title: "Rcpp and CUDA backend Logistic Regression"
+author: "Xin Zhou"
+date: May 6, 2015\newline
+output:
+  beamer_presentation:
+    includes:
+      in_header: header.tex
+    incremental: yes
+    keep_tex: yes
+    theme: Warsaw
+    toc: yes
+  slidy_presentation:
+    incremental: yes
+fontsize: 12pt
+subtitle: CS628 Parallism Algorithm 
+classoption: compress
+---
+
+# Intro
+
+## Background
+> The Rcpp and CUDA provide give us the possibility that we can wrap
+> C++ code or CUDA code in R Package.
+> Therefore, building a parallel framework for machine learning problem
+> will improve the performance of several algorithm of certain R Package
+
+## Existed Parallel Framework
+There are several packages combine CUDA or MPI into R Packages
+\medskip
+
+- __Rmpi__ 
+- __R/parallel__ 
+- __Multicore__
+- __gputools__ 
+- __CudaBayesreg__
+- __RCUDA__
+
+## Rcpp Solution
+with Rcpp we can integrate the .cu Code directly into package's dynamic linking library, and the special Makefile in Rcpp Package is a Makevars
+
+```shell
+PKG_LIBS = $(shell $(R_HOME)/bin/Rscript -e "Rcpp:::LdFlags()") -Xlinker ... 
+CUDA_INCS = -I/usr/local/cula/include -lcublas
+
+GLMOBJECTS=\
+./GLM/*.o \
+...
+
+RCPPGLM = RcppGLM.o 
+
+RCPP_EXPORT = RcppExports.o
+
+OBJECTS = $(GLMOBJECTS) $(RCPPGLM) $(RCPP_EXPORT)
+
+
+%.o: %.cu
+	$(NVCC) -x cu -c -arch=sm_20 -Xcompiler "-fPIC" $(CUDA_INCS) $< -o $@
+```
+
+# Logistic Regression Algorithm
+## multinomial logistic regression problem
+In the multinomial logistic regression problem, we have the probability definition of each class on each observation.
+
+$$
+    \ln(\frac{\pi_{ij}}{\pi_{iJ}}) = X\beta_{j}
+$$
+
+## multinomial logistic regression problem
+- Here $\beta_j$ means the $j$ th column of matrix $\beta$.
+- Since $\sum_{j=1}^J\pi_{ij} = 1$, which means that for each response $Y_i$, the summed probability in predictors space is 1.
+- In Logistical regression, since we have $N$ obvervation $\mathbf{Y}$, and we use $\mathbf{Y}_i$ represents each observation $(0,0,0,..1,..0)$.
+- Therefore, we can define the probability of all classes:
+
+## probability of multinomial logistic regression problem
+$$
+    \pi_{ij} = \frac{e^{X_i\beta_j}}{1 + \sum_{j=1}^{J-1}e^{X_i\beta_j}} \qquad j \neq J 
+$$
+
+$$
+    \pi_{iJ} = \frac{1}{1 + \sum_{j=1}^{J-1}e^{X_i\beta_j}} \qquad j = J 
+$$
+
+## object function and gradient 
+$$
+\begin{aligned}
+    L(\beta) = -\sum_{i=1}^N[\sum_{j=1}^{J-1} \mathbf{Y}_{ij}\sum_{k=1}^pX_{ik}\beta_{kj} - n_i[\log[1+\sum_{j=1}^{J-1}e^{\sum_{k=1}^pX_{ik}\beta_{kj}}]]
+\end{aligned}
+$$
+
+$$
+     \nabla = -\sum_{i=1}^N[\mathbf{Y}_{ij}X_{ik}-n_iX_{ik}\pi_{ij}] = 
+    -X^T(Y-\pi)
+$$
+
+## In one vs all model
+We also can define the Hessian matrix for the update: $\beta^{(t+1)} = \beta^{(t)} - \alpha H^{-1}\nabla$. 
+
+And in multinomial model, for each class j, we will have
+
+$$
+  \mathbf{H}_{kk'} = \sum_{i=1}^N n_iX_{ik}X_{ik'}\pi_{ij}(1-\pi_{ij})
+$$
+
+## Parallel
+As the result, in gradient descent, we can paralyze them in several parts:
+
+- Summed Loss fucntion $L$: distribute the $[\log[1+\sum_{j=1}^{J-1}e^{\sum_{k=1}^pX_{ik}\beta_{kj}}]]$ into each threads, and use \bf{reduce} to sum them.
+
+- Matrix Multiplication: in gradient function $\nabla$, calculate the $-X^T(Y-\pi)$
+
+# Result
+## Classification result
+\centering{\includegraphics[width=\textwidth,height=0.8\textheight,keepaspectratio]{../mnist.pdf}}
+
+## Speed up on CUDA about 8x and Classification error ~ 0.13
+\centering{\includegraphics[width=\textwidth,height=0.8\textheight,keepaspectratio]{images/benchmark.pdf}}
+
+
+
+
+
+
+
